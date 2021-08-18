@@ -86,4 +86,4 @@ app.get('/', async (req, res) => {
   return res.send(sortedData)
 })
 
-app.listen(1337, (req, res) => console.log('Running on 1337'))
+app.listen(process.env.PORT || 5000, (req, res) => console.log('Running on port 5000'))
