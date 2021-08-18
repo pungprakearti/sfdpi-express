@@ -1,11 +1,24 @@
 const express = require('express')
 const {google} = require('googleapis')
+require('dotenv').config()
+const fs = require('fs')
+const path = require('path')
+
+// Environment variables
+const {
+  SS_ID,
+  GOOGLE_CREDS
+} = process.env
+
+// Write creds to disk
+const credsPath = path.join(`${__dirname}/creds.json`)
+fs.writeFileSync(credsPath , GOOGLE_CREDS)
+
 const app = express()
-const spreadsheetId = '1QfRY4wwkRK_yCh-mw3r6JumRNoADbe9rLVWU8yn8Bzo'
 
 app.get('/', async (req, res) => {
   const auth = new google.auth.GoogleAuth({
-    keyFile: 'creds.json',
+    keyFile: credsPath,
     scopes: 'https://www.googleapis.com/auth/spreadsheets.readonly'
   })
 
@@ -17,7 +30,7 @@ app.get('/', async (req, res) => {
 
   // Get all values from sheet
   const fetchedData = await googleSheets.spreadsheets.values.get({
-    spreadsheetId,
+    spreadsheetId: SS_ID,
     range: 'Sheet1'
   })
 

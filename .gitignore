@@ -1,2 +1,4 @@
 creds.json
+creds_og.json
 node_modules
+.env
