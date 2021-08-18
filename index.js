@@ -1,11 +1,27 @@
 const express = require('express')
+const cors = require('cors')
 const {google} = require('googleapis')
-const app = express()
-const spreadsheetId = '1QfRY4wwkRK_yCh-mw3r6JumRNoADbe9rLVWU8yn8Bzo'
+require('dotenv').config()
+const fs = require('fs')
+const path = require('path')
 
-app.get('/', async (req, res) => {
+// Environment variables
+const {
+  SS_ID,
+  GOOGLE_CREDS
+} = process.env
+
+// Write creds to disk
+const credsPath = path.join(`${__dirname}/creds.json`)
+fs.writeFileSync(credsPath , GOOGLE_CREDS)
+
+const app = express()
+app.use(cors())
+
+
+const fetchCells = async (res) => {
   const auth = new google.auth.GoogleAuth({
-    keyFile: 'creds.json',
+    keyFile: credsPath,
     scopes: 'https://www.googleapis.com/auth/spreadsheets.readonly'
   })
 
@@ -16,33 +32,58 @@ app.get('/', async (req, res) => {
   const googleSheets = google.sheets({version: 'v4', auth: client})
 
   // Get all values from sheet
-  const fetchedData = await googleSheets.spreadsheets.values.get({
-    spreadsheetId,
-    range: 'Sheet1'
-  })
+  let fetchedData
+  try {
+    fetchedData = await googleSheets.spreadsheets.values.get({
+      spreadsheetId: SS_ID,
+      range: 'Sheet1'
+    })
+  } catch(error) {
+    const status = error?.response?.data?.error?.code
+    const message = error?.response?.data?.error?.message
+    res.status(status)
+    return res.send({message})
+  }
 
-  // Sort data
+  return fetchedData
+}
+
+
+const sortData = (data) => {
   let sortedData = {}
-  let tempData = [...fetchedData.data.values]
-  tempData.shift()
+  let valuesArr = [...data]
+  const keysArr = valuesArr.shift()
 
   // Create keys
-  fetchedData.data.values.map((cell, i) => {
-    if(i < 1) {
-      cell.map((key) => {
-        sortedData[key.split(' ').join('').toLowerCase()] = []
-      })
-    }
+  keysArr.forEach((key) => {
+    sortedData[key.split(' ').join('').toLowerCase()] = []
   })
 
   // Add values to array for corresponding key
-  tempData.map((cell, i) => {
-    cell.map((value, j) => {
+  valuesArr.forEach((cell, i) => {
+    cell.forEach((value, j) => {
       if(value !== '') sortedData[Object.keys(sortedData)[j]].push(value)
     })
   })
 
-  res.send(sortedData)
+  return sortedData
+}
+
+
+/* Fetch google sheets cells, sort, and return */
+app.get('/', async (req, res) => {
+  let sortedData
+  const fetchedData = await fetchCells(res)
+
+  // Sort data
+  if(fetchedData?.data?.values.length) {
+    sortedData = sortData(fetchedData.data.values)
+  } else {
+    res.status(500)
+    return res.send({message: 'Error, no data found'})
+  }
+
+  return res.send(sortedData)
 })
 
 app.listen(1337, (req, res) => console.log('Running on 1337'))
