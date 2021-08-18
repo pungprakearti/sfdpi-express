@@ -1,4 +1,5 @@
 const express = require('express')
+const cors = require('cors')
 const {google} = require('googleapis')
 require('dotenv').config()
 const fs = require('fs')
@@ -15,7 +16,9 @@ const credsPath = path.join(`${__dirname}/creds.json`)
 fs.writeFileSync(credsPath , GOOGLE_CREDS)
 
 const app = express()
+app.use(cors())
 
+/* Fetch google sheets cells, sort, and return */
 app.get('/', async (req, res) => {
   const auth = new google.auth.GoogleAuth({
     keyFile: credsPath,
